@@ -1,144 +1,42 @@
 ﻿
+using System.IO;
+using System.Reflection;
 using System.Text;
 using WasmDemo;
 using Wasmtime;
+using static System.Formats.Asn1.AsnWriter;
+using Module = Wasmtime.Module;
 
+// ExportDemo.Run();
+
+// using import in c#
 var wasmFile = "../../../../WasmLib/bin/Debug/net6.0/WasmLib.wasm";
+var goWasmFile = "../../../../wasm-module/go-wasm-module/go-wasm-module.wasm";
+var rustWasmFile = "../../../../wasm-module/rust-wasm-module/target/wasm32-wasi/release/rust_wasm_module.wasm";
 
-// RunMain();
-// RunCustomMethod();
-// RunStringParam();
+using var wasmHelper = new WasmHelper();
 
-RunIntArrayParam();
-
-
-void RunMain()
+wasmHelper.Linker.DefineFunction("env", "hello_from_env", () =>
 {
-    using var wasmHelper = new WasmHelper(wasmFile);
-    var instance = wasmHelper.Instance;
+    Console.WriteLine("Hello from the Dotnet Host!");
+});
 
-    var main = instance.GetFunction("_start")!;
-    main.Invoke();
-}
+using var goWasmModule = Module.FromFile(wasmHelper.Engine, goWasmFile);
+using var wasmLibModule = Module.FromFile(wasmHelper.Engine, wasmFile);
 
+wasmHelper.Linker.DefineModule(wasmHelper.Store, goWasmModule);
 
-void RunCustomMethod()
-{
-    using var wasmHelper = new WasmHelper(wasmFile);
-    var instance = wasmHelper.Instance;
-    var main = instance.GetFunction("_start")!;
-    main.Invoke();
+var goWasmIns = wasmHelper.GetInstance(goWasmModule);
+var goMainFunc = goWasmIns.GetFunction("_start")!;
+goMainFunc.Invoke();
+var r = goWasmIns.GetFunction("main.add")?.Invoke(1, 3);
 
-
-    var run = instance.GetAction("run")!;
-    run.Invoke();
-}
+var wasmLibIns = wasmHelper.GetInstance(wasmLibModule);
+var cSharpMainFunc = wasmLibIns.GetFunction("_start")!;
+cSharpMainFunc.Invoke();
 
 
-void RunStringParam()
-{
-    using var wasmHelper = new WasmHelper(wasmFile);
-    var instance = wasmHelper.Instance;
-    var main = instance.GetFunction("_start")!;
-    main.Invoke();
-
-
-    var address = CreateWasmString("hi wasm");
-    var echoTimes = 5;
-
-    var echo = instance.GetFunction("echo");
-    echo?.Invoke(echoTimes, address);
-
-
-    int CreateWasmString(string value)
-    {
-        value += "\0";
-
-        var mem = instance.GetMemory("memory")!;
-        var wasmMalloc = instance.GetFunction<int, int>("malloc")!;
-        
-        var len = Encoding.UTF8.GetByteCount(value);
-        var startAddress = wasmMalloc.Invoke(len);
-        mem.WriteString(startAddress, value, Encoding.UTF8);
-
-        return startAddress;
-    }
-}
-
-
-void RunByteArrayParam()
-{
-    using var wasmHelper = new WasmHelper(wasmFile);
-    var instance = wasmHelper.Instance;
-    var main = instance.GetFunction("_start")!;
-    main.Invoke();
-
-
-    // 调用 wasm
-    var (start, byteLen) = CreateWasmArray(new[] { 4, 5 });
-    var arrayParamFunc = instance.GetFunction<int, int, int>("byte_array_param")!;
-    int res = arrayParamFunc.Invoke(start, byteLen);
-
-    // 根据 wasm 返回的指针，获取数据
-    var mem = instance.GetMemory("memory")!;
-    long dataPointerStart = mem.ReadInt32(res);
-    long dataLen = mem.ReadInt32(res + sizeof(int));
-    // 根据 数据的指针 和 长度 解析数据
-    byte[] data = new byte[dataLen];
-    for (int i = 0; i < dataLen; i++)
-    {
-        byte b = mem.ReadByte(dataPointerStart + i);
-        data[i] = b;
-        Console.WriteLine($"byte array {i} is {b}");
-    }
-
-
-    (int start, int len) CreateWasmArray(int[] value)
-    {
-        var mem = instance.GetMemory("memory")!;
-        var wasmMalloc = instance.GetFunction<int, int>("malloc")!;
-
-        var len = value.Length * sizeof(int);
-        var start = wasmMalloc.Invoke(len);
-        Console.WriteLine($"{start}, {len}");
-        var index = 0;
-        for (int i = 0; i < len; i += sizeof(int))
-        {
-            mem!.WriteInt32(start + i, value[index++]);
-        }
-
-        return (start, len);
-    }
-}
-
-
-void RunIntArrayParam()
-{
-    using var wasmHelper = new WasmHelper(wasmFile);
-    var instance = wasmHelper.Instance;
-    var main = instance.GetFunction("_start")!;
-    main.Invoke();
-
-
-    // 调用 wasm
-    var (start, intLen) = CreateWasmArray(new[] { 4, 5 });
-    var arrayParamFunc = instance.GetAction<int, int>("int_array_param")!;
-    arrayParamFunc.Invoke(start, intLen);
-
-
-    (int start, int len) CreateWasmArray(int[] value)
-    {
-        var mem = instance.GetMemory("memory")!;
-        var wasmMalloc = instance.GetFunction<int, int>("malloc")!;
-
-        var len = value.Length * sizeof(int);
-        var start = wasmMalloc.Invoke(len);
-        var index = 0;
-        for (int i = 0; i < len; i += sizeof(int))
-        {
-            mem!.WriteInt32(start + i, value[index++]);
-        }
-
-        return (start, value.Length);
-    }
-}
+using var rustWasmModule = Module.FromFile(wasmHelper.Engine, rustWasmFile);
+var rustWasmIns = wasmHelper.GetInstance(rustWasmModule);
+var res = rustWasmIns.GetFunction("add")?.Invoke(4, 7);
+Console.WriteLine(res);

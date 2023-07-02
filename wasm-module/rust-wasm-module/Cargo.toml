@@ -1,0 +1,14 @@
+[package]
+name = "rust-wasm-module"
+version = "0.1.0"
+edition = "2021"
+
+# 不将 crate 类型设置为 cdylib，Rust 编译器将生成一个 .rlib 文件，这是 Rust 自己的库格式。 
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+
+[dependencies]
+# wasm-bindgen = "0.2"

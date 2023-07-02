@@ -361,6 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/src/BasicKube.Web/wwwroot/assets/dist/index.js
-/src/BasicKube.Web/wwwroot/assets/dist/index.css
-/src/BasicKube.Web/wwwroot/assets/dist/index.js.map
+wasm-module/rust-wasm-module/target/wasm32-wasi/release/rust_wasm_module.wasm
+wasm-module/rust-wasm-module/target/wasm32-wasi/release/rust_wasm_module.wat
+/wabt-1.0.33

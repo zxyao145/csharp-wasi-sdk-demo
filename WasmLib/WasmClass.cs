@@ -71,4 +71,10 @@ public class WasmClass
             Console.WriteLine($"IntArrayParam val:{nr}");
         }
     }
+
+
+    public static void RunImport()
+    {
+        Console.WriteLine("Hello from WasmClass.Run");
+    }
 }
